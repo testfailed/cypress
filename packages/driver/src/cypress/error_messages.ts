@@ -915,6 +915,16 @@ export default {
 
   },
 
+  mount: {
+    not_implemented: {
+      message: [
+        `${cmd('mount')} must be implemented by the user. There are`,
+        'full instructions for doing so at the following location.',
+      ].join('\n'),
+      docsUrl: 'https://on.cypress.io/mount',
+    },
+  },
+
   navigation: {
     cross_origin ({ message, originPolicy, configFile }) {
       return {
