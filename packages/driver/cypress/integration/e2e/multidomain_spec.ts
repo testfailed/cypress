@@ -180,5 +180,33 @@ describe('multidomain', { experimentalSessionSupport: true }, () => {
         })
       })
     })
+
+    it('allows users to call the "done" callback within the "switchToDomain" context', (done) => {
+    // @ts-ignore
+      cy.switchToDomain('foobar.com', () => {
+        cy
+        .get('[data-cy="cypress-check"]')
+        .invoke('text')
+        .should('equal', 'Has window.Cypress')
+
+        done()
+      })
+    })
+
+    it('runs commands in secondary domain', () => {
+      // @ts-ignore
+      cy.switchToDomain('foobar.com', () => {
+        cy
+        .get('[data-cy="dom-check"]')
+        .invoke('text')
+        .should('equal', 'From a secondary domain')
+      })
+
+      cy.log('after switchToDomain')
+    })
+
+    //TODO: how should we implement errors on the done callback when it is not available?
+    // would this be more applicable for a system test?
+    it('throws "done is not defined" if callback is not passed into test but called in "switchToDomain"')
   })
 })

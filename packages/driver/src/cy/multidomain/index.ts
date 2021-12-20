@@ -26,6 +26,27 @@ export function addCommands (Commands, Cypress: Cypress.Cypress, cy: Cypress.cy,
     // this isn't fully implemented, but in place to be able to test out
     // the other parts of multidomain
     switchToDomain (domain, fn) {
+      const done = cy.state('done')
+      const deferredDone = createDeferred()
+      const invokeDone = (err) => {
+        //TODO: if an error comes back, should we call done immediately?
+        return deferredDone.resolve({
+          crossDomainDoneCalled: true,
+          error: err,
+        })
+      }
+
+      // if done has been provided to the test, allow the user to call done
+      // from the switchToDomain context running in the secondary domain.
+      if (done) {
+        // @ts-ignore
+        Cypress.multiDomainCommunicator.once('done:called', invokeDone)
+      } else {
+        // if done has not been provided, settle this promise now as
+        // done should not be available in the secondary domain
+        deferredDone.resolve()
+      }
+
       clearTimeout(timeoutId)
 
       Cypress.log({
@@ -119,6 +140,18 @@ export function addCommands (Commands, Cypress: Cypress.Cypress, cy: Cypress.cy,
           Cypress.multiDomainCommunicator.off('command:enqueued', addCommand)
           // @ts-ignore
           Cypress.multiDomainCommunicator.off('command:update', updateCommand)
+
+          // By the time the command queue is finished, this promise should be settled as
+          // as done will be invoked within the secondary domain already, if applicable
+          // TODO: how does this work with errors where commands or other items prematurely fail in the secondary domain?
+          deferredDone.promise.then(({ crossDomainDoneCalled, error } = {
+            crossDomainDoneCalled: false,
+            error: undefined,
+          }) => {
+            if (crossDomainDoneCalled) {
+              done(error)
+            }
+          })
         })
 
         // fired once the spec bridge is set up and ready to
@@ -141,6 +174,7 @@ export function addCommands (Commands, Cypress: Cypress.Cypress, cy: Cypress.cy,
           // @ts-ignore
           Cypress.multiDomainCommunicator.toSpecBridge('run:domain:fn', {
             fn: fn.toString(),
+            isDoneFnAvailable: !!done,
           })
 
           state('readyForMultidomain', false)
@@ -152,6 +186,13 @@ export function addCommands (Commands, Cypress: Cypress.Cypress, cy: Cypress.cy,
         // the specified domain
         // @ts-ignore
         Cypress.multiDomainCommunicator.emit('expect:domain', domain)
+      }).finally(() => {
+        // if done is to be called from the secondary domain, the 'done:called' event should
+        // have already been invoked in the switchToDomain function synchrously while the command queue finishes.
+        // Go ahead and remove the listener
+        // TODO: how do we handle async/setTimeout with a done?
+        // @ts-ignore
+        Cypress.multiDomainCommunicator.off('done:called', invokeDone)
       })
     },
   })

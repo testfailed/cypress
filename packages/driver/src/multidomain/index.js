@@ -80,9 +80,34 @@ const setup = () => {
   Cypress.on('log:added', onLogAdded)
   Cypress.on('log:changed', onLogChanged)
 
-  specBridgeCommunicator.on('run:domain:fn', (data) => {
-    // TODO: await this if it's a promise, or do whatever cy.then does
-    window.eval(`(${data.fn})()`)
+  specBridgeCommunicator.on('run:domain:fn', ({ fn, isDoneFnAvailable = false }) => {
+    const evalFn = `(${fn})()`
+
+    if (isDoneFnAvailable) {
+      // stub out the 'done' function if available in the primary domain
+      // to notify the primary domain if the done() callback is invoked
+      // within the spec bridge
+      const done = (err) => {
+        // signal to the secondary command queue to stop before communicating back with the primary
+        specBridgeCommunicator.toPrimary('done:called', err)
+
+        return null
+      }
+
+      // similar to the primary domain, the done() callback will be stored in state
+      // if undefined and a user tries to call done, the same effect is granted
+      cy.state('done', done)
+
+      const fnDoneWrapper = `(() => {
+        const done = cy.state('done');
+        ${evalFn}
+      })`
+
+      window.eval(`(${fnDoneWrapper})()`)
+    } else {
+      // TODO: await this if it's a promise, or do whatever cy.then does
+      window.eval(evalFn)
+    }
 
     specBridgeCommunicator.toPrimary('run:domain:fn')
   })
