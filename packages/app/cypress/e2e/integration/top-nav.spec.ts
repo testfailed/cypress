@@ -28,7 +28,7 @@ describe('App Top Nav Workflows', () => {
         .should('have.attr', 'src')
         .and('contain', 'firefox')
 
-        cy.findByTestId('top-nav-active-browser').should('contain', 'Firefox v5')
+        cy.findByTestId('top-nav-active-browser').should('contain', 'Firefox 5')
       })
     })
 
@@ -50,7 +50,7 @@ describe('App Top Nav Workflows', () => {
         .should('have.attr', 'src')
         .and('contain', 'chrome')
 
-        cy.findByTestId('top-nav-active-browser').should('contain', 'Chrome v1')
+        cy.findByTestId('top-nav-active-browser').should('contain', 'Chrome 1')
       })
 
       it('shows list of browser options in dropdown when selected', () => {
@@ -277,7 +277,7 @@ describe('App Top Nav Workflows', () => {
       it('shows log in modal when button is pressed', () => {
         cy.get('@logInButton').click()
 
-        cy.findByRole('dialog', { name: 'Log In To Cypress' }).as('logInModal')
+        cy.findByRole('dialog', { name: 'Log in to Cypress' }).as('logInModal')
         cy.get('@logInModal').findByRole('button', { name: 'Log In' })
         cy.get('@logInModal').findByRole('button', { name: 'Close' }).click()
       })
