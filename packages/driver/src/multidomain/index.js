@@ -10,6 +10,7 @@ import $Commands from '../cypress/commands'
 import $Log from '../cypress/log'
 import $Listeners from '../cy/listeners'
 import { SpecBridgeDomainCommunicator } from './communicator'
+import { createDeferred } from '../util/deferred'
 
 const specBridgeCommunicator = new SpecBridgeDomainCommunicator()
 
@@ -80,8 +81,23 @@ const setup = () => {
   Cypress.on('log:added', onLogAdded)
   Cypress.on('log:changed', onLogChanged)
 
-  specBridgeCommunicator.on('run:domain:fn', ({ fn, isDoneFnAvailable = false }) => {
+  specBridgeCommunicator.on('run:domain:fn', async ({ fn, isDoneFnAvailable = false }) => {
+    const deferredSwitchToDomain = createDeferred()
+
+    cy.state('switchToDomainDeferred', deferredSwitchToDomain)
     const evalFn = `(${fn})()`
+
+    // await the eval func, whether it is a promise or not
+    const asyncWrapper = `(async () => {
+      const deferredSwitchToDomain = cy.state('switchToDomainDeferred')
+
+      try {
+        await ${evalFn}
+        deferredSwitchToDomain.resolve()
+      } catch(e){
+        deferredSwitchToDomain.reject(e)
+      }
+    })()`
 
     if (isDoneFnAvailable) {
       // stub out the 'done' function if available in the primary domain
@@ -100,16 +116,23 @@ const setup = () => {
 
       const fnDoneWrapper = `(() => {
         const done = cy.state('done');
-        ${evalFn}
-      })`
+        ${asyncWrapper}
+      })()`
 
-      window.eval(`(${fnDoneWrapper})()`)
+      window.eval(fnDoneWrapper)
     } else {
-      // TODO: await this if it's a promise, or do whatever cy.then does
-      window.eval(evalFn)
+      window.eval(asyncWrapper)
     }
 
-    specBridgeCommunicator.toPrimary('run:domain:fn')
+    try {
+      await deferredSwitchToDomain.promise
+      specBridgeCommunicator.toPrimary('run:domain:fn')
+    } catch (err) {
+      specBridgeCommunicator.toPrimary('run:domain:fn', err)
+    } finally {
+      cy.state('done', undefined)
+      cy.state('switchToDomainDeferred', undefined)
+    }
   })
 
   specBridgeCommunicator.on('run:command',

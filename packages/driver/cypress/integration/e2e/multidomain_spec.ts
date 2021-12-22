@@ -45,12 +45,13 @@ describe('multidomain', { experimentalSessionSupport: true }, () => {
 
   describe('window events', () => {
     it('form:submitted', (done) => {
-      expectTextMessage('form:submitted', done)
-
       // @ts-ignore
       cy.switchToDomain('foobar.com', () => {
-        Cypress.once('form:submitted', () => {
-          top!.postMessage({ host: location.host, actual: 'form:submitted' }, '*')
+        const $form = cy.$$('form')
+
+        Cypress.once('form:submitted', (e) => {
+          expect(e.target).to.eq($form.get(0))
+          done()
         })
 
         cy.get('form').submit()
@@ -181,7 +182,7 @@ describe('multidomain', { experimentalSessionSupport: true }, () => {
       })
     })
 
-    it('allows users to call the "done" callback within the "switchToDomain" context', (done) => {
+    it('allows users to call the "done" callback within the "switchToDomain" context synchronously', (done) => {
     // @ts-ignore
       cy.switchToDomain('foobar.com', () => {
         cy
@@ -193,20 +194,15 @@ describe('multidomain', { experimentalSessionSupport: true }, () => {
       })
     })
 
-    it('runs commands in secondary domain', () => {
+    it('allows users to call the "done" callback within the "switchToDomain" context asynchronously', (done) => {
       // @ts-ignore
-      cy.switchToDomain('foobar.com', () => {
+      cy.switchToDomain('foobar.com', async () => {
         cy
-        .get('[data-cy="dom-check"]')
-        .invoke('text')
-        .should('equal', 'From a secondary domain')
+        .get('[data-cy="cypress-check"]')
+
+        await setTimeout(() => undefined, 1000)
+        done()
       })
-
-      cy.log('after switchToDomain')
     })
-
-    //TODO: how should we implement errors on the done callback when it is not available?
-    // would this be more applicable for a system test?
-    it('throws "done is not defined" if callback is not passed into test but called in "switchToDomain"')
   })
 })
