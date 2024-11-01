@@ -16,7 +16,7 @@ import {
   browserNameVersionRe,
 } from './normalizeStdout'
 
-const isCi = require('is-ci')
+const isCi = require('ci-info').isCI
 
 require('mocha-banner').register()
 const chalk = require('chalk').default
