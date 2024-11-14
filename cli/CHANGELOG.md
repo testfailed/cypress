@@ -7,6 +7,10 @@ _Released 11/19/2024 (PENDING)_
 
 - Updated the protocol to be able to flex logic based on project config. Addresses [#30560](https://github.com/cypress-io/cypress/issues/30560).
 
+**Bugfixes:**
+
+- Fixed an issue where some JS assets were not properly getting sourcemaps included with the vite dev server if they had a cache busting query parameter in the URL. Fixed some scenarios to ensure that the sourcemaps that were included by the vite dev server were inlined. Addressed in [#30606](https://github.com/cypress-io/cypress/pull/30606).
+
 ## 13.15.2
 
 _Released 11/5/2024_
